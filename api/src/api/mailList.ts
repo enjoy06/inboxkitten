@@ -1,0 +1,103 @@
+// Loading mailgun reader and config
+import MailgunReader from "../mailgunReader";
+import express from "express";
+import cacheControl from "../../config/cacheControl";
+import mailgunConfig from "../../config/mailgunConfig";
+
+const reader = new MailgunReader(mailgunConfig);
+
+/**
+ * Mail listing API, returns the list of emails
+ *
+ * @param req Express request object
+ * @param res Express response object
+ */
+const mailList = function(req: express.Request, res: express.Response): void {
+    let params = req.query;
+
+    // recipient may be:
+    // only the username, e.g. "john.doe"
+    // or the full email, e.g. "john.doe@domain.com"
+    let recipient = params.recipient as string;
+
+    // Check if recipient is empty
+    if (!recipient) {
+        res.status(400).send({ error: "No valid `recipient` param found" });
+        return;
+    }
+
+    // Trim leading and trailing whitespace
+    recipient = recipient.trim();
+
+    // If recipient ends with `"@"+mailgunConfig.emailDomain`, remove it
+    let pos = recipient.indexOf("@" + mailgunConfig.emailDomain);
+    if (pos >= 0) {
+        recipient = recipient.substring(0, pos);
+    }
+
+    // Validate recipient
+    try {
+        recipient = validateUsername(recipient);
+    } catch (e) {
+        res.status(400).send({ error: "Invalid email" });
+        return;
+    }
+
+    // Empty check
+    if (!recipient) {
+        res.status(400).send({ error: "No valid `recipient` param found" });
+        return;
+    }
+
+    reader.recipientEventList(recipient + "@" + mailgunConfig.emailDomain)
+        .then(response => {
+            res.set('cache-control', cacheControl.dynamic);
+            res.status(200).send(response.items);
+        })
+        .catch(e => {
+            console.error(`Error getting list of messages for "${recipient}":`, e);
+            res.status(500).send({ error: e.toString() });
+        });
+};
+
+/**
+ * Strictly validate username, rejecting any username that does not conform to the standards
+ * @param username username to be validated
+ * @returns Validated username
+ */
+function validateUsername(username: string): string {
+
+    // Step 1: Trim leading and trailing whitespaces
+    username = username.trim();
+
+    // Step 2: Throw error if the sanitized string is empty
+    if (username.length === 0) {
+        throw new Error("Invalid email.");
+    }
+
+    // Step 3: Check for disallowed characters
+    // Allowed characters: alphanumeric, dot (.), underscore (_), hyphen (-), plus (+)
+    const disallowedChars = /[^a-zA-Z0-9._+-]/g;
+    if (disallowedChars.test(username)) {
+        throw new Error("Invalid email.");
+    }
+
+    // Step 4: Ensure that the username does not only contains symbols, but at least one alphanumeric character
+    if (!/[a-zA-Z0-9]/.test(username)) {
+        throw new Error("Invalid email.");
+    }
+
+    // Step 5: Check for consecutive dots
+    if (/\.{2,}/.test(username)) {
+        throw new Error("Invalid email.");
+    }
+
+    // Step 6: Ensure that the username starts and end with an alphanumeric character instead of a symbol
+    if (/^[._+-]/.test(username) || /[._+-]$/.test(username)) {
+        throw new Error("Invalid email.");
+    }
+
+    return username;
+}
+
+export default mailList;
