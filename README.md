@@ -24,6 +24,13 @@ docker run \
 	uilicious/inboxkitten
 ```
 
+docker run \
+	-e MAILGUN_EMAIL_DOMAIN="inboxkitten.com" \
+	-e MAILGUN_API_KEY="key-1483dc7aa43c14198e89d3db092e81b6" \
+	-e WEBSITE_DOMAIN="localhost:8000" \
+	-p 8000:8000 \
+	uilicious/inboxkitten
+
 And head over to port 8000 - for your inboxkitten
 
 # Other Deployment Options
