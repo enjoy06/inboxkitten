@@ -1,12 +1,18 @@
 <template>
     <vue-scroll :ops="vueScrollBarOps">
+      <div class="table-box advisory" style="
+          background: #fbc02d4f;
+          padding: 0.5em;
+      ">
+        <i class="fas fa-exclamation-triangle" style="margin-right:0.5em"></i><a href="https://uilicious.com/blog/psa-inboxkitten-will-be-blocking-no-reply-google/" target="_blank"><b>PSA</b>: Please use inboxkitten, for only testing, or non critical emails. See here for more details.</a>
+      </div>
       <pulse-loader v-if="refreshing" class="loading"></pulse-loader>
       <div class="table-box" v-if="listOfMessages.length > 0">
         <div :class="rowCls(index)" v-for="(msg, index) in listOfMessages" :key="msg.url"
              @click="getMessage(msg.storage.url)">
 
           <div class="row-info">
-            <div class="row-name">{{formatName(msg.message.headers.from)}}</div>
+            <div class="row-name">{{extractEmail(msg.message.headers.from)}}</div>
             <div class="row-subject">{{(msg.message.headers.subject)}}</div>
           </div>
 
@@ -119,13 +125,15 @@ export default {
       }
     },
 
-    formatName (sender) {
-      // Sender does not contain any formatted name, do not format them
-      if (sender.includes('<') || sender.includes('>')) {
-        let [name, emailUnformatted, ...rest] = sender.split(' <')
-        let [email, ...unknown] = emailUnformatted.split('>')
-        return email
+    extractEmail (sender) {
+      let emails = sender.match(/[^@<\s]+@[^@\s>]+/g)
+
+      // If there are any email in the matching, take the first and return
+      if (emails) {
+        return emails[0]
       }
+
+      // Sender does not contain any formatted name, do not format them
       return sender
     },
 
@@ -158,7 +166,7 @@ export default {
       border-bottom: 3px solid #20a0ff;
 
       .row-info {
-        width: 75%;
+        width: 85%;
 
         .row-name {
           font-weight: bold;
@@ -205,8 +213,12 @@ export default {
       .row-info {
         display: flex;
         flex-direction: row;
-        justify-content: space-evenly;
+        justify-content: flex-start;
         .row-name {
+          margin-right: 1em;
+          width: 35%;
+          min-width: 35%;
+          max-width: 35%;
         }
       }
       border-bottom: 1px solid #20a0ff;
